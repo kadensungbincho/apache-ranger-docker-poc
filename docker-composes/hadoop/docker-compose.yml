@@ -1,0 +1,123 @@
+version: "3"
+
+services:
+  namenode:
+    image: kadensungbincho/ranger-hadoop-namenode:2.0.0-hadoop3.2.1-java8-ranger2.1.0
+    container_name: namenode
+    hostname: namenode
+    restart: always
+    ports:
+      - 9870:9870
+      - 9000:9000
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+      - ./hdfs/install.properties:/opt/ranger-hdfs-plugin/install.properties
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - hadoop.env
+
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    hostname: datanode
+    restart: always
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+    env_file:
+      - hadoop.env
+
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    hostname: resourcemanager
+    restart: always
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864"
+    env_file:
+      - hadoop.env
+
+  nodemanager1:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: nodemanager
+    hostname: nodemanager
+    restart: always
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+    env_file:
+      - hadoop.env
+
+  historyserver:
+    image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
+    container_name: historyserver
+    hostname: historyserver
+    restart: always
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+    volumes:
+      - hadoop_historyserver:/hadoop/yarn/timeline
+    env_file:
+      - hadoop.env
+
+  hive-server:
+    image: kadensungbincho/ranger-hive:2.0.0-hadoop3.2.1-java8-ranger2.1.0
+    container_name: hive-server
+    hostname: hive-server
+    volumes:
+      - ./hive/install.properties:/opt/ranger-hive-plugin/install.properties
+    env_file:
+      - ./hadoop.env
+    environment:
+      SERVICE_PRECONDITION: "hive-metastore:9083"
+    ports:
+      - "10000:10000"
+
+  hive-metastore:
+    image: kadensungbincho/ranger-hive:2.0.0-hadoop3.2.1-java8-ranger2.1.0
+    container_name: hive-metastore
+    hostname: hive-metastore
+    env_file:
+      - ./hadoop.env
+    command: ["/run.sh", "metastore"]
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 datanode:9864 hive-db:3306"
+    ports:
+      - "9083:9083"
+
+  hive-db:
+    image: mysql:8.0.21
+    container_name: hive-db
+    hostname: hive-db
+    command: --default-authentication-plugin=mysql_native_password --lower-case-table-names=1
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: metastore
+      MYSQL_USER: hive
+      MYSQL_PASSWORD: hive
+  presto:
+    image: kadensungbincho/ranger-presto:presto344-ranger2.1.0
+    container_name: presto
+    hostname: presto
+    volumes:
+      - ./presto/etc/catalog:/usr/lib/presto/etc/catalog
+      - ./presto/etc/config.properties:/usr/lib/presto/etc/config.properties
+      - ./presto/etc/jvm.config:/usr/lib/presto/etc/jvm.config
+      - ./presto/etc/log.properties:/usr/lib/presto/etc/log.properties
+      - ./presto/etc/node.properties:/usr/lib/presto/etc/node.properties
+      - ./presto/install.properties:/usr/lib/presto/ranger-presto-plugin/install.properties
+    environment:
+      SERVICE_PRECONDITION: "hive-metastore:9083"
+    ports:
+      - "8080:8080"
+
+volumes:
+  hadoop_namenode:
+  hadoop_datanode:
+  hadoop_historyserver:
+
+networks:
+  default:
+    external:
+      name: ranger-env

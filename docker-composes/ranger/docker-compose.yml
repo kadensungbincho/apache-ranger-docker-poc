@@ -1,0 +1,72 @@
+version: '3.7'
+
+services:
+  db:
+    image: mysql:5.7
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ranger
+      MYSQL_USER: ranger
+      MYSQL_PASSWORD: ranger
+    expose:
+      - "3306"
+  ranger-admin:
+    image: kadensungbincho/ranger-admin:2.1.0
+    container_name: ranger2.1.0-admin
+    hostname: ranger
+    depends_on:
+      - db
+    volumes:
+      - ./admin/bootstrap.sh:/opt/ranger_admin/bootstrap.sh
+      - ./admin/install-2.1.0.properties:/opt/ranger_admin/install.properties
+    command: ["./bootstrap.sh"]
+    ports:
+      - "6080:6080"
+    restart: always
+  ranger-usersync:
+    image: kadensungbincho/ranger-usersync:2.1.0
+    container_name: ranger2.1.0-usersync
+    hostname: usersync
+    depends_on:
+      - ranger-admin
+    volumes:
+      - ./usersync/bootstrap.sh:/opt/ranger_usersync/bootstrap.sh
+      - ./usersync/install-2.1.0.properties:/opt/ranger_usersync/install.properties
+    command: ["./bootstrap.sh"]
+    restart: always
+  #  ranger-usersync-ldap:
+  #    image: kadensungbincho/ranger-usersync:2.1.0
+  #    container_name: ranger2.0.0-usersync-ldap
+  #    hostname: usersync-ldap
+  #    depends_on:
+  #      - ranger-admin
+  #    volumes:
+  #      - ./usersync/bootstrap-ldap.sh:/opt/ranger_usersync/bootstrap.sh
+  #      - ./usersync/install-2.1.0-ldap.properties:/opt/ranger_usersync/install-hdfs.properties
+  #      - ./usersync/templates:/templates
+  #      - ./usersync/conf.dist/log4j.properties:/opt/ranger_usersync/conf.dist/log4j.properties
+  #    command: ["./bootstrap.sh"]
+  es:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.5.0
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "ELASTIC_PASSWORD=elasticsearch"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+
+volumes:
+  db_data:
+    driver: local
+  es_data:
+    driver: local
+
+networks:
+  default:
+    external:
+      name: ranger-env

@@ -8,4 +8,4 @@ cp /templates/* /opt/ranger_usersync/templates
 sleep 300
 
 ./ranger-usersync-services.sh start
-tail -f $(grep 'logdir' ./install-hdfs.properties  | sed -e 's#.*=\(\)#\1#')/usersync-usersync-ldap-.log
+tail -f $(grep 'logdir' ./install.properties  | sed -e 's#.*=\(\)#\1#')/usersync-usersync-ldap-.log

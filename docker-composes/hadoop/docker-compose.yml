@@ -111,6 +111,14 @@ services:
       SERVICE_PRECONDITION: "hive-metastore:9083"
     ports:
       - "8080:8080"
+  # https://cwiki.apache.org/confluence/display/KNOX/Dynamic+HA+Provider+Configuration
+  # https://community.cloudera.com/t5/Support-Questions/How-to-Enable-Zookeeper-Discovery-for-HiveServer2-HA/td-p/95392
+  zoo:
+    image: zookeeper:3.4.14
+    restart: always
+    hostname: zookeeper
+    ports:
+      - 2181:2181
 
 volumes:
   hadoop_namenode:
